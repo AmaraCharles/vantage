@@ -303,6 +303,34 @@
  
   /* Accessibility: visible focus ring when tabbing to the toggle,
      since the real checkbox is opacity:0 and easy to lose track of. */
+  /* Demo Deposit toggle — same switch shape as the wire transfer one */
+  #demoToggleSlider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: #ccc;
+    border-radius: 28px;
+    transition: background-color 0.2s ease;
+  }
+  #demoToggleSlider::before {
+    content: "";
+    position: absolute;
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  #demoEnabledToggle:checked + #demoToggleSlider { background: #28a745; }
+  #demoEnabledToggle:checked + #demoToggleSlider::before { transform: translateX(22px); }
+  #demoEnabledToggle:focus-visible + #demoToggleSlider {
+    outline: 2px solid var(--accent, #2b6ef6);
+    outline-offset: 2px;
+  }
+
   #wtEnabledToggle:focus-visible + #wtToggleSlider {
     outline: 2px solid var(--accent, #2b6ef6);
     outline-offset: 2px;
@@ -325,6 +353,7 @@
         <a href="#" data-section="referrals">Referrals</a>
         <a href="#" data-section="deposits">Deposits</a>
         <a href="#" data-section="wire-transfer-settings">💳 Wire Transfer</a>
+        <a href="#" data-section="demo-settings">🎮 Demo Deposit</a>
         <a href="#" data-section="traders-list">Traders List</a>
         <a href="#" data-section="investment-plans">Investment Plans</a>
         <a href="#" data-section="create-trader">Create Trader</a>
@@ -468,6 +497,84 @@
           </div>
         </section>
 
+        <!-- Wire Transfer Settings -->
+        <section id="wire-transfer-settings" class="card section" style="display:none">
+          <div class="section-title">💳 Wire Transfer</div>
+
+          <div class="card" style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div>
+              <div style="font-weight:700;">Show "Wire Transfer" in deposit methods</div>
+              <div class="muted" style="font-size:13px;">Applied when you click Save. Use demo details only — never a real bank account.</div>
+            </div>
+            <label style="position:relative;display:inline-block;width:50px;height:28px;flex-shrink:0;">
+              <input type="checkbox" id="wtEnabledToggle" style="opacity:0;width:0;height:0;" />
+              <span id="wtToggleSlider"></span>
+            </label>
+          </div>
+
+          <div class="card">
+            <div style="font-weight:700;margin-bottom:10px;">Bank details shown to users</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px 12px;">
+              <div>
+                <label class="muted" for="wt_bankName">Bank Name</label>
+                <input id="wt_bankName" class="input" style="width:100%;" />
+              </div>
+              <div>
+                <label class="muted" for="wt_accountName">Account Name</label>
+                <input id="wt_accountName" class="input" style="width:100%;" />
+              </div>
+              <div>
+                <label class="muted" for="wt_accountNumber">Account Number</label>
+                <input id="wt_accountNumber" class="input" style="width:100%;" />
+              </div>
+              <div>
+                <label class="muted" for="wt_routingOrSortCode">Routing / Sort Code</label>
+                <input id="wt_routingOrSortCode" class="input" style="width:100%;" />
+              </div>
+              <div>
+                <label class="muted" for="wt_swiftBic">SWIFT / BIC</label>
+                <input id="wt_swiftBic" class="input" style="width:100%;" />
+              </div>
+            </div>
+            <label class="muted" for="wt_referenceNote" style="display:block;margin-top:8px;">Reference Note</label>
+            <textarea id="wt_referenceNote" class="input" rows="3" style="width:100%;margin-bottom:12px;resize:vertical;font-family:inherit;"></textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button id="wtSaveBtn" class="btn">Save</button>
+              <button id="wtResetBtn" class="btn" style="background:var(--danger);">Reset to Demo Defaults</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Demo Deposit Settings -->
+        <section id="demo-settings" class="card section" style="display:none">
+          <div class="section-title">🎮 Demo Deposit</div>
+
+          <div class="card" style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div>
+              <div style="font-weight:700;">Show "Demo" in deposit methods</div>
+              <div class="muted" style="font-size:13px;">When on, users see a Demo option on the Fund Account page. Takes effect immediately.</div>
+            </div>
+            <label style="position:relative;display:inline-block;width:50px;height:28px;flex-shrink:0;">
+              <input type="checkbox" id="demoEnabledToggle" style="opacity:0;width:0;height:0;" />
+              <span id="demoToggleSlider"></span>
+            </label>
+          </div>
+
+          <div class="card">
+            <div style="font-weight:700;margin-bottom:10px;">Popup message</div>
+            <label class="muted" for="demo_title">Title</label>
+            <input id="demo_title" class="input" maxlength="200" placeholder="e.g. Demo Mode 🎉" style="width:100%;margin-bottom:8px;" />
+            <label class="muted" for="demo_message">Message</label>
+            <textarea id="demo_message" class="input" maxlength="5000" rows="5" placeholder="What users see when they pick Demo…" style="width:100%;margin-bottom:8px;resize:vertical;font-family:inherit;"></textarea>
+            <div id="demo_meta" class="muted" style="font-size:12px;margin-bottom:12px;"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button id="demoSaveBtn" class="btn">Save Message</button>
+              <button id="demoPreviewBtn" class="btn ghost">Preview</button>
+              <button id="demoDeleteBtn" class="btn" style="background:var(--danger);">Delete Message</button>
+            </div>
+          </div>
+        </section>
+
         <!-- Traders List -->
         <section id="traders-list" class="card section" style="display:none">
           <div class="section-title">Traders List</div>
@@ -600,6 +707,12 @@
               <!-- Contact & Address -->
               <div>
                 <div class="muted" style="font-weight:600;margin-bottom:6px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;">📍 Contact &amp; Address</div>
+                <label class="muted" style="font-size:12px">Phone</label>
+                <input id="sv_phone" class="input" readonly style="font-size:13px;padding:8px;" />
+                <label class="muted" style="font-size:12px">Account Currency</label>
+                <input id="sv_currency" class="input" readonly style="font-size:13px;padding:8px;" />
+                <label class="muted" style="font-size:12px">Terms Accepted</label>
+                <input id="sv_terms" class="input" readonly style="font-size:13px;padding:8px;" />
                 <label class="muted" style="font-size:12px">House No.</label>
                 <input id="sv_houseNo" class="input" readonly style="font-size:13px;padding:8px;" />
                 <label class="muted" style="font-size:12px">Street Address</label>
@@ -1608,7 +1721,7 @@ function sendUserDetail(user) {
   }
 
   // READ — admin-only endpoint, returns full record incl. audit fields
-  async function loadSettingsFromServer() {
+  async function loadSettingsFromServer(silent) {
     try {
       const res = await $.ajax({
         type: "GET",
@@ -1620,6 +1733,7 @@ function sendUserDetail(user) {
       return res.data;
     } catch (err) {
       console.error("Error loading wire transfer settings:", err);
+      if (silent === true) return null;
       if (err.status === 401) {
         Swal.fire({ icon: "error", title: "Not authenticated", text: "Please log in as an admin again." });
       } else {
@@ -1696,8 +1810,8 @@ function sendUserDetail(user) {
     if (toggle && slider) slider.style.background = toggle.checked ? "#28a745" : "#ccc";
   }
 
-  async function refreshForm() {
-    const settings = await loadSettingsFromServer();
+  async function refreshForm(silent) {
+    const settings = await loadSettingsFromServer(silent);
     populateForm(settings);
   }
 
@@ -1705,7 +1819,11 @@ function sendUserDetail(user) {
     const section = document.getElementById("wire-transfer-settings");
     if (!section) return;
 
-    refreshForm();
+    refreshForm(true); // silent: no popup if the admin isn't logged in yet
+
+    // Refresh from the server each time the admin opens the section
+    const navLink = document.querySelector('#mainNav a[data-section="wire-transfer-settings"]');
+    if (navLink) navLink.addEventListener("click", () => refreshForm());
 
     document.getElementById("wtSaveBtn").addEventListener("click", async function () {
       const fields = readForm();
@@ -1749,6 +1867,123 @@ function sendUserDetail(user) {
        setTimeout(() => window.loadWireTransferSettings && window.loadWireTransferSettings(), 200);
        break;
 */
+  </script>
+
+  <script>
+  /* Demo Deposit admin — CRUD for the /demo-settings endpoints.
+     Same auth pattern as the wire transfer script above (adminToken). */
+  (function DemoSettingsAdminScript() {
+    const API_BASE = "https://vantagestonks-render.onrender.com/demo-settings";
+
+    function authHeaders() {
+      return { Authorization: `Bearer ${localStorage.getItem("adminToken") || ""}` };
+    }
+
+    function errMsg(err, fallback) {
+      if (err && err.status === 401) return "Please log in as an admin again.";
+      return (err && err.responseJSON && err.responseJSON.message) || fallback;
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    // READ
+    async function load(silent) {
+      try {
+        const res = await $.ajax({ type: "GET", url: `${API_BASE}/admin`, dataType: "json", headers: authHeaders(), timeout: 30000 });
+        populate(res.data);
+      } catch (err) {
+        console.error("Error loading demo settings:", err);
+        if (silent === true) return;
+        Swal.fire({ icon: "error", title: "Load failed", text: errMsg(err, "Could not load demo settings.") });
+      }
+    }
+
+    function populate(s) {
+      if (!s) return;
+      document.getElementById("demoEnabledToggle").checked = !!s.enabled;
+      document.getElementById("demo_title").value = s.title || "";
+      document.getElementById("demo_message").value = s.message || "";
+      document.getElementById("demo_meta").textContent = s.updatedBy
+        ? `Last updated by ${s.updatedBy} on ${new Date(s.updatedAt).toLocaleString()}`
+        : "";
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      if (!document.getElementById("demo-settings")) return;
+
+      // Refresh from the server each time the admin opens the section
+      const navLink = document.querySelector('#mainNav a[data-section="demo-settings"]');
+      if (navLink) navLink.addEventListener("click", () => load());
+
+      // TOGGLE — saves immediately, reverts the switch if the request fails
+      const toggle = document.getElementById("demoEnabledToggle");
+      toggle.addEventListener("change", async function () {
+        const enabled = toggle.checked;
+        try {
+          const res = await $.ajax({
+            type: "PUT", url: `${API_BASE}/toggle`, dataType: "json", contentType: "application/json",
+            data: JSON.stringify({ enabled }), headers: authHeaders(), timeout: 30000,
+          });
+          populate(res.data);
+          Swal.fire({ icon: "success", title: enabled ? "Demo enabled" : "Demo disabled", timer: 1200, showConfirmButton: false });
+        } catch (err) {
+          toggle.checked = !enabled;
+          console.error("Error toggling demo settings:", err);
+          Swal.fire({ icon: "error", title: "Toggle failed", text: errMsg(err, "Could not update the toggle.") });
+        }
+      });
+
+      // CREATE / UPDATE
+      document.getElementById("demoSaveBtn").addEventListener("click", async function () {
+        const title = document.getElementById("demo_title").value.trim();
+        const message = document.getElementById("demo_message").value.trim();
+        if (!message) {
+          Swal.fire({ icon: "warning", title: "Message required", text: "Enter a message before saving." });
+          return;
+        }
+        try {
+          const res = await $.ajax({
+            type: "PUT", url: API_BASE, dataType: "json", contentType: "application/json",
+            data: JSON.stringify({ title, message }), headers: authHeaders(), timeout: 30000,
+          });
+          populate(res.data);
+          Swal.fire({ icon: "success", title: "Saved", text: "Demo message updated.", timer: 1500, showConfirmButton: false });
+        } catch (err) {
+          console.error("Error saving demo message:", err);
+          Swal.fire({ icon: "error", title: "Save failed", text: errMsg(err, "Could not save the message.") });
+        }
+      });
+
+      // PREVIEW — shows what users will see, including unsaved edits
+      document.getElementById("demoPreviewBtn").addEventListener("click", function () {
+        const title = document.getElementById("demo_title").value.trim() || "Demo Mode";
+        const message = document.getElementById("demo_message").value.trim() || "This is a demo deposit method. No real funds are moved.";
+        Swal.fire({ icon: "info", title: escapeHtml(title), html: escapeHtml(message).replace(/\n/g, "<br>"), confirmButtonText: "OK" });
+      });
+
+      // DELETE
+      document.getElementById("demoDeleteBtn").addEventListener("click", async function () {
+        const confirm = await Swal.fire({
+          icon: "warning", title: "Delete demo message?",
+          text: "Users will see a generic fallback message until you save a new one.",
+          showCancelButton: true, confirmButtonText: "Delete",
+        });
+        if (!confirm.isConfirmed) return;
+        try {
+          const res = await $.ajax({ type: "DELETE", url: API_BASE, dataType: "json", headers: authHeaders(), timeout: 30000 });
+          populate(res.data);
+          Swal.fire({ icon: "success", title: "Deleted", timer: 1200, showConfirmButton: false });
+        } catch (err) {
+          console.error("Error deleting demo message:", err);
+          Swal.fire({ icon: "error", title: "Delete failed", text: errMsg(err, "Could not delete the message.") });
+        }
+      });
+
+      load(true); // silent: no popup if the admin isn't logged in yet
+    });
+  })();
   </script>
 
   <!-- Script 8: Create trader -->
@@ -2478,6 +2713,9 @@ const useremmt=useremm.trim().replace(/^"|"$/g, '');
 
       // ── Populate Survey Fields ──────────────────────────────────
       // Contact & Address
+      $('#sv_phone').val(userInfo.phone || '—');
+      $('#sv_currency').val(userInfo.currency || '—');
+      $('#sv_terms').val(userInfo.termsAcceptedAt ? new Date(userInfo.termsAcceptedAt).toLocaleString() : '—');
       $('#sv_houseNo').val(userInfo.survey_houseNo || '—');
       $('#sv_street').val(userInfo.survey_streetAddress || '—');
       $('#sv_city').val(userInfo.survey_city || '—');

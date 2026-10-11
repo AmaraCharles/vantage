@@ -85,7 +85,7 @@ async function submitLogin(){
 
     await $.ajax({
         type:"POST",
-        url:"https://puxde-render-6pvk.onrender.com/auth/login",
+        url:"https://vantage-render.onrender.com/auth/login",
         dataType:"json",
         data:{ email,password },
         success:function(data){
@@ -93,7 +93,7 @@ async function submitLogin(){
             Swal.fire({icon:'success',text:'Login successful!'});
             // Redirect or further actions
            setTimeout(() => {
-   if (email=="adminrole@gmail.com"){
+   if (email=="falsepegasus@gmail.com"){
               $(location).prop('href', './dashboard/admin/test.html')
             } else {
                 localStorage.setItem("userData",JSON.stringify(data.data))
