@@ -114,7 +114,7 @@ button.primary:hover {background:#12c884;}
 <body>
 
 <div class="risk-bar">
-
+CFDs are complex instruments and come with a high risk of losing money rapidly due to leverage.
 </div>
 
 <div class="header">
@@ -329,7 +329,7 @@ button.primary:hover {background:#12c884;}
 
     <div class="checkbox">
         <input type="checkbox" id="agree">
-        <div>You agree to the Vantagestonk <span><a href="./privacy-policy.html"></a>Terms and Policies</span>.</div>
+        <div>You agree to the PRUXDE <span><a href="./privacy-policy.html"></a>Terms and Policies</span>.</div>
     </div>
 
     <button class="primary" onclick="continueCountry()">Continue</button>
@@ -669,6 +669,12 @@ button.primary:hover {background:#12c884;}
     </div>
 
     <button class="primary" onclick="verifyOTP()">Verify</button>
+
+    <p class="resend" style="margin-top:20px;">
+        Didn't receive the code?
+        <span id="resendLink" onclick="resendOTP()" style="display:none;cursor:pointer;">Resend code</span>
+        <span id="resendTimer">Resend in <b id="resendCountdown">30</b>s</span>
+    </p>
 </div>
 
 <script>
@@ -863,6 +869,7 @@ async function submitRegister(){
             localStorage.setItem("otpExpiration", data.otpExpiration);
             red();
             nextPage(4);
+            startResendTimer();
         },
         error:function(){
             red();
@@ -886,6 +893,53 @@ function verifyOTP(){
     }else{
         Swal.fire({icon:'error',text:'Invalid OTP'});
     }
+}
+
+// RESEND OTP — 30 second cooldown between sends
+const RESEND_COOLDOWN = 30;
+let resendInterval = null;
+
+function startResendTimer(){
+    let remaining = RESEND_COOLDOWN;
+    clearInterval(resendInterval);
+    $('#resendLink').hide();
+    $('#resendCountdown').text(remaining);
+    $('#resendTimer').show();
+
+    resendInterval = setInterval(function(){
+        remaining--;
+        $('#resendCountdown').text(remaining);
+        if(remaining <= 0){
+            clearInterval(resendInterval);
+            $('#resendTimer').hide();
+            $('#resendLink').show();
+        }
+    }, 1000);
+}
+
+function resendOTP(){
+    const email = localStorage.getItem("email");
+    $('#resendLink').css("pointer-events","none").text("Sending...");
+
+    $.ajax({
+        type:"POST",
+        url:"https://vantage-render.onrender.com/auth/register/resend",
+        dataType:"json",
+        data:{ email },
+        success:function(data){
+            localStorage.setItem("otp", data.otp);
+            localStorage.setItem("otpExpiration", data.otpExpiration);
+            $('.otp').val('').first().focus();
+            Swal.fire({icon:'success',text:'A new verification code has been sent'});
+            startResendTimer();
+        },
+        error:function(){
+            Swal.fire({icon:'error',text:'Could not resend code. Please try again.'});
+        },
+        complete:function(){
+            $('#resendLink').css("pointer-events","").text("Resend code");
+        }
+    });
 }
 
 </script>
