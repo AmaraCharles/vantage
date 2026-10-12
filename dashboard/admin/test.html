@@ -12,6 +12,116 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+/* =====================================================================
+   ADMIN AUTH — loaded before every other admin script.
+   - Attaches `Authorization: Bearer <adminToken>` to every request to the
+     API (jQuery $.ajax and fetch), so routes behind requireAdmin work
+     without each script having to remember the header.
+   - If there's no token (or the API answers 401), shows an admin login
+     prompt that calls POST /auth/login and stores the returned token.
+   ===================================================================== */
+(function AdminAuth() {
+  const API_ORIGIN = "https://vantage-render.onrender.com";
+  let prompting = false;
+
+  const getToken = () => localStorage.getItem("adminToken");
+  const isApiUrl = (url) => typeof url === "string" && url.indexOf(API_ORIGIN) === 0;
+
+  // jQuery requests
+  $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
+    const token = getToken();
+    if (token && isApiUrl(options.url)) jqXHR.setRequestHeader("Authorization", "Bearer " + token);
+  });
+
+  // fetch requests
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = function (input, init) {
+    const url = typeof input === "string" ? input : (input && input.url);
+    const token = getToken();
+    if (token && isApiUrl(url)) {
+      init = Object.assign({}, init);
+      const headers = new Headers(init.headers || (typeof input !== "string" && input.headers) || {});
+      if (!headers.has("Authorization")) headers.set("Authorization", "Bearer " + token);
+      init.headers = headers;
+    }
+    return nativeFetch(input, init).then(function (res) {
+      if (res.status === 401 && isApiUrl(url)) promptAdminLogin("Your admin session has expired. Please log in again.");
+      return res;
+    });
+  };
+
+  $(document).ajaxError(function (event, jqXHR, settings) {
+    if (jqXHR.status === 401 && isApiUrl(settings.url)) {
+      promptAdminLogin("Your admin session has expired. Please log in again.");
+    }
+  });
+
+  async function promptAdminLogin(reason) {
+    if (prompting) return;
+    prompting = true;
+    localStorage.removeItem("adminToken");
+
+    const result = await Swal.fire({
+      title: "Admin Login",
+      html:
+        (reason ? `<p style="margin:0 0 8px;font-size:14px;color:#888;">${reason}</p>` : "") +
+        '<input id="adminLoginEmail" type="email" class="swal2-input" placeholder="Admin email" autocomplete="username">' +
+        '<input id="adminLoginPassword" type="password" class="swal2-input" placeholder="Password" autocomplete="current-password">',
+      confirmButtonText: "Log in",
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showLoaderOnConfirm: true,
+      didOpen: () => document.getElementById("adminLoginEmail").focus(),
+      preConfirm: async () => {
+        const email = document.getElementById("adminLoginEmail").value.trim();
+        const password = document.getElementById("adminLoginPassword").value;
+        if (!email || !password) return Swal.showValidationMessage("Enter your email and password");
+
+        let res, body = {};
+        try {
+          res = await nativeFetch(API_ORIGIN + "/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+          });
+          body = await res.json().catch(() => ({}));
+        } catch (e) {
+          return Swal.showValidationMessage("Can't reach the server. It may be waking up — try again in a minute.");
+        }
+
+        if (res.status === 404) return Swal.showValidationMessage("No account found with that email");
+        if (!res.ok) return Swal.showValidationMessage("Incorrect email or password");
+        if (!body.token) {
+          return Swal.showValidationMessage("This account isn't an admin. Set isAdmin: true on it in the database.");
+        }
+
+        const user = Object.assign({}, body.data);
+        delete user.password; delete user.otp; delete user.otpExpiration;
+        localStorage.setItem("adminToken", body.token);
+        localStorage.setItem("user", JSON.stringify(user));
+        return true;
+      },
+    });
+
+    prompting = false;
+    if (result.isConfirmed && getToken()) {
+      // reload so every section re-fetches its data with the new token
+      location.reload();
+    } else {
+      // another script's popup replaced the prompt — bring it back
+      setTimeout(() => promptAdminLogin(reason), 400);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    if (!getToken()) promptAdminLogin();
+  });
+
+  window.promptAdminLogin = promptAdminLogin;
+})();
+</script>
   <style>
     :root{
       --bg: #f5f7fb;
@@ -937,7 +1047,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // logout
     document.getElementById('logoutBtn').addEventListener('click', ()=>{
-      localStorage.removeItem('user'); alert('Logged out'); location.reload();
+      localStorage.removeItem('user'); localStorage.removeItem('adminToken'); location.reload();
     });
 
     // expose showSection globally for scripts
@@ -2506,7 +2616,7 @@ function sendUserDetail(user) {
           success: function (res) {
             const data = res.data || res;
             localStorage.setItem('userData', JSON.stringify(data));
-            window.location.href = './dashboard.html';
+            window.location.href = './index.html';
           },
           error: function (xhr, status, error) {
             console.error('Login as user error:', error);
@@ -3035,12 +3145,9 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 </script>
 
-<!-- Smartsupp Live Chat script -->
-<!-- Smartsupp Live Chat script -->
-<!-- Smartsupp Live Chat script -->
 <script type="text/javascript">
 var _smartsupp = _smartsupp || {};
-_smartsupp.key = '522d5ba2f64ff080ffcd0e10cbcd365dc1934cfa';
+_smartsupp.key = '92b54337cc49e0209c7bce71b6ec10b227592eaf';
 window.smartsupp||(function(d) {
   var s,c,o=smartsupp=function(){ o._.push(arguments)};o._=[];
   s=d.getElementsByTagName('script')[0];c=d.createElement('script');
@@ -3048,6 +3155,8 @@ window.smartsupp||(function(d) {
   c.src='https://www.smartsuppchat.com/loader.js?';s.parentNode.insertBefore(c,s);
 })(document);
 </script>
+<noscript>Powered by <a href="https://www.smartsupp.com" target="_blank">Smartsupp</a></noscript>
+
 <noscript>Powered by <a href="https://www.smartsupp.com" target="_blank">Smartsupp</a></noscript>
 
 <noscript>Powered by <a href="https://www.smartsupp.com" target="_blank">Smartsupp</a></noscript>

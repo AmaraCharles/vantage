@@ -9,51 +9,12 @@ function apiLog(action, data) {
   localStorage.setItem('apiLogs', JSON.stringify(logs));
   console.log('API Call:', action, data);
 }
-// Initialize user data structure
+// Initialize user data structure — requires a logged-in user (set by login.html)
 function initUserData() {
   const existingUser = localStorage.getItem('userData');
   if (!existingUser) {
-    const defaultUser = {
-      firstName: 'New',
-      lastName: 'Port',
-      copytrading: '0',
-      trader: '',
-      condition: ' ',
-      kyc: 'unverified',
-      email: 'falsepegasus@gmail.com',
-      referralCode: 'Eee03F',
-      referredUsers: [],
-      planHistory: [],
-      referredBy: null,
-      plan: [],
-      country: 'Andorra',
-      amountDeposited: 'You are not eligible to view livestream of ongoing trade. Kindly contact your trader or support.',
-      profit: 700,
-      balance: 900,
-      referalBonus: '0',
-      transactions: [],
-      accounts: {
-        eth: { address: '' },
-        ltc: { address: '' },
-        btc: { address: '' },
-        usdt: { address: '' }
-      },
-      withdrawals: [],
-      verified: false,
-      isDisabled: false,
-      dateJoined: new Date().toISOString(),
-      rewards: [
-        { id: 'welcome', title: 'Welcome Bonus', description: 'Sign up and verify your account', amount: 25.00, claimed: false },
-        { id: 'first-deposit', title: 'First Deposit', description: 'Make your first deposit of $100+', amount: 50.00, claimed: false },
-        { id: 'first-trade', title: 'First Trade', description: 'Execute your first trade', amount: 10.00, claimed: false },
-        { id: 'weekly-trader', title: 'Weekly Trader', description: 'Complete 10 trades this week', amount: 100.00, claimed: false },
-        { id: 'copy-trading', title: 'Copy Trading Master', description: 'Follow 3 master traders', amount: 75.00, claimed: false }
-      ],
-      copyTradingActive: [],
-      plan: []
-    };
-    localStorage.setItem('userData', JSON.stringify(defaultUser));
-    return defaultUser;
+    window.location.href = '../../login.html';
+    return null;
   }
   return JSON.parse(existingUser);
 }
@@ -606,6 +567,9 @@ function loadPage(page) {
         case 'copytradehistory':
       renderCopyTradingHistory()
       break;
+    case 'profit-history':
+      renderProfitHistoryPage();
+      break;
     case 'admin':
       renderAdminPage();
       break;
@@ -666,6 +630,128 @@ function loadPage(page) {
 // ];
 
 // ==================== PAGE RENDERERS ====================
+// ==================== PROFIT HISTORY PAGE ====================
+async function renderProfitHistoryPage() {
+  const user = getUserData();
+  const content = document.getElementById('content');
+
+  // Show loading state immediately
+  content.innerHTML = `
+    <div style="padding: 2rem;">
+      <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem;">💰 Profit History</h1>
+      <p class="text-muted" style="margin-bottom:1.5rem;">All admin profit adjustments on your account</p>
+      <div style="text-align:center; padding:3rem; color: hsl(var(--muted-foreground));">Loading...</div>
+    </div>
+  `;
+
+  let history = [];
+  let currentProfit = user.profit || 0;
+
+  try {
+    const res = await $.ajax({
+      type: "GET",
+      url: `https://vantage-render.onrender.com/transactions/${user._id}/profit/history`,
+      dataType: "json",
+      timeout: 30000,
+    });
+    if (res.success) {
+      history = res.data || [];
+      currentProfit = res.currentProfit ?? currentProfit;
+    }
+  } catch (e) {
+    console.warn("Could not fetch profit history from server:", e);
+  }
+
+  // Calculate totals
+  const totalAdded   = history.filter(e => e.type === "add").reduce((s, e) => s + Number(e.amount || 0), 0);
+  const totalDeducted = history.filter(e => e.type === "deduct").reduce((s, e) => s + Number(e.amount || 0), 0);
+
+  const fmt = n => "$" + Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const rowsHtml = history.length === 0
+    ? `<tr><td colspan="5" style="text-align:center;padding:2rem;color:hsl(var(--muted-foreground));">No profit adjustments yet.</td></tr>`
+    : history.map(entry => {
+        const isAdd = entry.type === "add";
+        const color = isAdd ? "hsl(var(--chart-2))" : "hsl(var(--destructive))";
+        const icon  = isAdd ? "▲" : "▼";
+        const label = isAdd ? "Credit" : "Debit";
+        const date  = new Date(entry.date || entry.ts || Date.now()).toLocaleString();
+        return `
+          <tr>
+            <td style="padding:12px 8px;">
+              <span style="color:${color}; font-weight:700; font-size:0.85rem;">${icon} ${label}</span>
+            </td>
+            <td style="padding:12px 8px; font-weight:700; color:${color};">${isAdd ? "+" : "-"}${fmt(entry.amount)}</td>
+            <td style="padding:12px 8px; color:hsl(var(--muted-foreground)); font-size:0.85rem;">${entry.note || "—"}</td>
+            <td style="padding:12px 8px; font-size:0.85rem;">${fmt(entry.before)} → ${fmt(entry.after)}</td>
+            <td style="padding:12px 8px; color:hsl(var(--muted-foreground)); font-size:0.8rem; white-space:nowrap;">${date}</td>
+          </tr>
+        `;
+      }).join("");
+
+  content.innerHTML = `
+    <style>
+      .ph-card {
+        background: hsl(var(--card));
+        border: 1px solid hsl(var(--card-border));
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+      }
+      .ph-stat { display:flex; flex-direction:column; gap:4px; }
+      .ph-stat-label { font-size:0.78rem; color:hsl(var(--muted-foreground)); text-transform:uppercase; letter-spacing:.06em; }
+      .ph-stat-value { font-size:1.5rem; font-weight:700; }
+      .ph-table { width:100%; border-collapse:collapse; font-size:0.9rem; }
+      .ph-table thead th { text-align:left; padding:10px 8px; border-bottom:1px solid hsl(var(--border)); color:hsl(var(--muted-foreground)); font-size:0.78rem; text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
+      .ph-table tbody tr:hover { background: hsl(var(--accent)); }
+      .ph-table tbody tr { border-bottom:1px solid hsl(var(--border)); }
+      @media(max-width:640px){
+        .ph-stats-grid { grid-template-columns: 1fr 1fr !important; }
+        .ph-table thead th:nth-child(4),
+        .ph-table tbody td:nth-child(4) { display:none; }
+      }
+    </style>
+
+    <div style="padding: 1.5rem 1rem;">
+      <h1 style="font-size:1.5rem; font-weight:700; margin-bottom:0.25rem;">💰 Profit History</h1>
+      <p class="text-muted" style="margin-bottom:1.5rem;">All admin profit adjustments credited or debited on your account</p>
+
+      <!-- Summary cards -->
+      <div class="ph-stats-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:1.5rem;">
+        <div class="ph-card ph-stat">
+          <span class="ph-stat-label">Current Profit</span>
+          <span class="ph-stat-value" style="color:hsl(var(--chart-2));">${fmt(currentProfit)}</span>
+        </div>
+        <div class="ph-card ph-stat">
+          <span class="ph-stat-label">Total Credited</span>
+          <span class="ph-stat-value" style="color:hsl(var(--chart-2));">+${fmt(totalAdded)}</span>
+        </div>
+        <div class="ph-card ph-stat">
+          <span class="ph-stat-label">Total Debited</span>
+          <span class="ph-stat-value" style="color:hsl(var(--destructive));">-${fmt(totalDeducted)}</span>
+        </div>
+      </div>
+
+      <!-- History table -->
+      <div class="ph-card" style="overflow-x:auto;">
+        <h2 style="font-size:1rem; font-weight:600; margin-bottom:1rem;">Adjustment Log</h2>
+        <table class="ph-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Note</th>
+              <th>Before → After</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// ==================== DASHBOARD PAGE ====================
 function renderDashboardPage() {
   const user = getUserData();
 
@@ -1506,7 +1592,7 @@ function renderAdminPage() {
       </td>
       <td style="padding: 0.75rem; border-bottom: 1px solid hsl(var(--border));">$${plan.minInvestment} - $${plan.maxInvestment.toLocaleString()}</td>
       <td style="padding: 0.75rem; border-bottom: 1px solid hsl(var(--border));">${(plan.dailyProfitRate * 100).toFixed(2)}%</td>
-       <td style="padding: 0.75rem; border-bottom: 1px solid hsl(var(--border));">${(plan.monthly * 100).toFixed(2)}%</td>
+       <td style="padding: 0.75rem; border-bottom: 1px solid hsl(var(--border));">${plan.monthly != null ? (plan.monthly * 100).toFixed(2) + "%" : "—"}</td>
       <td style="padding: 0.75rem; border-bottom: 1px solid hsl(var(--border));">${plan.durationn} hours</td>
       <td style="padding: 0.75rem; border-bottom: 1px solid hsl(var(--border));">
         <button class="btn" style="background-color: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)); padding: 0.25rem 0.75rem; font-size: 0.875rem;" onclick="handleDeletePlan('${plan.id}')">Delete</button>
@@ -1583,6 +1669,7 @@ function renderAdminPage() {
               <th style="padding: 0.75rem; text-align: left; font-weight: 600;">Plan Name</th>
               <th style="padding: 0.75rem; text-align: left; font-weight: 600;">Investment Range</th>
               <th style="padding: 0.75rem; text-align: left; font-weight: 600;">Daily Rate</th>
+              <th style="padding: 0.75rem; text-align: left; font-weight: 600;">Monthly</th>
               <th style="padding: 0.75rem; text-align: left; font-weight: 600;">Duration</th>
               <th style="padding: 0.75rem; text-align: left; font-weight: 600;">Actions</th>
             </tr>
@@ -2093,6 +2180,9 @@ function renderFundAccountPage() {
     ">📋 Copy Address</button>
   </div>
 
+  <!-- 👇 Wire Transfer bank details (shown when "Wire Transfer" is selected) -->
+  <div id="wireDisplay" style="display: none; margin-bottom: 1.5rem; padding: 1rem; border: 1px solid hsl(var(--border)); border-radius: 8px; font-size: 0.95rem;"></div>
+
   <form id="depositForm">
     <div class="form-group">
       <label for="depositWallet">Deposit Channel</label>
@@ -2103,7 +2193,7 @@ function renderFundAccountPage() {
         <option value="solana">Solana</option>
         <option value="usdt">USDT (TRC20)</option>
         <option value="usdt2">USDT (ERC20)</option>
-        
+        <option value="litecoin">LTC</option>
        
       </select>
     </div>
@@ -2132,18 +2222,93 @@ function renderFundAccountPage() {
   const walletQr = document.getElementById("walletQr");
 
   // Replace with actual addresses from user object
-   const wallets = {
+ const wallets = {
     bitcoin: { label: "Bitcoin", address: "bc1q70hx8f5rzlv7g9man8gat77kup5v0s8ennvqaq", qr: "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=bc1q70hx8f5rzlv7g9man8gat77kup5v0s8ennvqaq" },
     ethereum: { label: "Ethereum", address: "0xbe085b0F1F7cd38EEC8D804f40Bfd1703F380C51", qr: "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=0xbe085b0F1F7cd38EEC8D804f40Bfd1703F380C51" },
-    
+    usdt: { label: "USDT (TRC20)", address: "TYcK8LbaAZYbn2n3o7MfJjkxFgEAZfGXPC", qr: "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TYcK8LbaAZYbn2n3o7MfJjkxFgEAZfGXPC" },
      usdt2: { label: "USDT (ERC20)", address: "0xbe085b0F1F7cd38EEC8D804f40Bfd1703F380C51", qr: "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=0xbe085b0F1F7cd38EEC8D804f40Bfd1703F380C51" },
   
 
-     },
+    solana: { label: "SOL", address: "CYAn5Le2dRBvSFVVxuPr527jbKLZb96k82kUWh9ZQ77d", qr: "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=CYAn5Le2dRBvSFVVxuPr527jbKLZb96k82kUWh9ZQ77d" },
   };
+
+
+  // Demo deposit method — only offered when an admin has switched it on.
+  const DEMO_FALLBACK = { title: "Demo Mode", message: "This is a demo deposit method. No real funds are moved." };
+  let demoSettings = null;
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function showDemoMessage() {
+    const title = (demoSettings && demoSettings.title) || DEMO_FALLBACK.title;
+    const message = (demoSettings && demoSettings.message) || DEMO_FALLBACK.message;
+    Swal.fire({
+      icon: 'info',
+      title: escapeHtml(title),
+      html: escapeHtml(message).replace(/\n/g, '<br>'),
+      confirmButtonText: 'OK'
+    });
+  }
+
+  $.ajax({
+    type: "GET",
+    url: "https://vantage-render.onrender.com/demo-settings",
+    dataType: "json",
+    timeout: 30000
+  }).then(res => {
+    const select = document.getElementById("depositWallet");
+    if (!res || !res.data || !res.data.enabled || !select) return;
+    demoSettings = res.data;
+    const opt = document.createElement("option");
+    opt.value = "demo";
+    opt.textContent = "Demo";
+    select.appendChild(opt);
+  }).catch(err => console.error("Error loading demo settings:", err));
+
+  // Wire Transfer deposit method — only offered when an admin has switched it on.
+  const wireDisplay = document.getElementById("wireDisplay");
+
+  $.ajax({
+    type: "GET",
+    url: "https://vantage-render.onrender.com/wire-transfer-settings",
+    dataType: "json",
+    timeout: 30000
+  }).then(res => {
+    const select = document.getElementById("depositWallet");
+    if (!res || !res.data || !res.data.enabled || !select || !wireDisplay) return;
+    const s = res.data;
+    const rows = [
+      ["Bank Name", s.bankName],
+      ["Account Name", s.accountName],
+      ["Account Number", s.accountNumber],
+      ["Routing / Sort Code", s.routingOrSortCode],
+      ["SWIFT / BIC", s.swiftBic],
+    ].filter(([, v]) => v);
+    wireDisplay.innerHTML =
+      rows.map(([k, v]) => `<p style="margin: 0 0 0.4rem; word-break: break-all;"><strong>${k}:</strong> ${escapeHtml(v)}</p>`).join("") +
+      (s.referenceNote ? `<p class="text-muted small" style="margin: 0.6rem 0 0;">${escapeHtml(s.referenceNote)}</p>` : "");
+    const opt = document.createElement("option");
+    opt.value = "wire";
+    opt.textContent = "Wire Transfer";
+    // keep Demo (if already added) as the last option
+    const demoOpt = select.querySelector('option[value="demo"]');
+    select.insertBefore(opt, demoOpt);
+  }).catch(err => console.error("Error loading wire transfer settings:", err));
 
   document.getElementById("depositWallet").addEventListener("change", function() {
     const value = this.value;
+    wireDisplay.style.display = value === "wire" ? "block" : "none";
+    if (value === "wire") {
+      walletDisplay.style.display = "none";
+      return;
+    }
+    if (value === "demo") {
+      walletDisplay.style.display = "none";
+      showDemoMessage();
+      return;
+    }
     if (wallets[value] && wallets[value].address) {
       walletDisplay.style.display = "block";
       walletLabel.textContent = wallets[value].label;
@@ -2157,7 +2322,13 @@ function renderFundAccountPage() {
     e.preventDefault();
     const wallet = document.getElementById('depositWallet').value;
     const amount = parseFloat(document.getElementById('depositAmount').value);
-    
+
+    // Demo never creates a real deposit request — just show the message again.
+    if (wallet === 'demo') {
+      showDemoMessage();
+      return;
+    }
+
     if (amount < 10) {
       Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: 'Minimum deposit amount is $10', confirmButtonText: 'OK' });
       return;
@@ -2174,9 +2345,10 @@ function renderFundAccountPage() {
     //   icon: 'success', 
     //   title: 'Deposit Submitted!', 
     //   html: `<strong>Method:</strong> ${wallet}<br><strong>Amount:</strong> $${amount.toFixed(2)}<br><br>Your deposit is being processed.`,
-    //   confirmButtonText: 'OK' 
+    //   confirmButtonText: 'OK'
     // });
     e.target.reset();
+    wireDisplay.style.display = "none";
   });
 }
 
@@ -2247,7 +2419,7 @@ function renderProfilePage() {
 }
 async function handleChangePassword() {
   // Fetch user info from localStorage/server
-  const storedUser = localStorage.getItem('user');
+  const storedUser = localStorage.getItem('userData');
   if (!storedUser) return alert('No user data found');
 
   const userFromLS = JSON.parse(storedUser);
@@ -2778,7 +2950,19 @@ function renderInvestmentPlansPage() {
           </div>
           <div>
             <div class="text-muted small">Max Investment</div>
-            <div style="font-weight: 600; margin-top: 0.25rem;">$${plan.maxInvestment.toLocaleString()}</div>
+            <div style="font-weight: 600; margin-top: 0.25rem;">${plan.maxInvestment.toLocaleString()}</div>
+          </div>
+          <div>
+            <div class="text-muted small">Daily Profit</div>
+            <div style="font-weight: 600; color: hsl(var(--chart-2)); margin-top: 0.25rem;">${(plan.dailyProfitRate * 100).toFixed(2)}%</div>
+          </div>
+          <div>
+            <div class="text-muted small">Total Return</div>
+            <div style="font-weight: 600; color: hsl(var(--chart-2)); margin-top: 0.25rem;">${totalReturn.toFixed(0)}%</div>
+          </div>
+          <div>
+            <div class="text-muted small">Duration</div>
+            <div style="font-weight: 600; margin-top: 0.25rem;">${plan.durationn} Hours</div>
           </div>
           <div>
             <div class="text-muted small">Your Balance</div>
@@ -3144,7 +3328,7 @@ function handleClaimReward(rewardId, title, amount) {
 
 async function handleEditProfile() {
   // Fetch user info from localStorage/server
-  const storedUser = localStorage.getItem('user');
+  const storedUser = localStorage.getItem('userData');
   if (!storedUser) return alert('No user data found');
 
   const userFromLS = JSON.parse(storedUser);
@@ -3222,195 +3406,6 @@ async function handleEditProfile() {
 // ==========================
 // 🔹 KYC HANDLER (All Pure JS)
 // ==========================
-
-//=============================
-//WIRE TRANSFER
-//=============================
-
-/* =====================================================================
-   NEW CODE 005 (v2) — Wire Transfer, now backed by the real API
-   ---------------------------------------------------------------------
-   Replaces the localStorage version from app-patch-userfacing.js.
-   Everything else in that file (001–004) is unchanged — only the
-   wire-transfer block below is new. Drop this in place of the old
-   NEW CODE 005 section.
-   ===================================================================== */
-
-const WIRE_TRANSFER_API_BASE = "https://vantage-render.onrender.com/wire-transfer-settings";
-
-/* NEW CODE 005: fetches the live settings from the backend. Public
-   endpoint — no auth needed, since this is just UI copy the Fund
-   Account page needs to render (enabled flag + demo bank fields),
-   mirroring how the existing crypto wallets are fetched from
-   /settings/wallets elsewhere in this app. */
-async function getWireTransferSettings() {
-  try {
-    const res = await fetch(WIRE_TRANSFER_API_BASE);
-    const json = await res.json();
-    return json.data;
-  } catch (error) {
-    console.error("Error fetching wire transfer settings:", error);
-    // fail safe: treat as disabled rather than showing stale/fake data
-    return { enabled: false };
-  }
-}
-
-/* NEW CODE 005: now async since it awaits the backend call. Returns
-   the <option> markup only if the admin has it enabled server-side. */
-async function renderWireTransferOption() {
-  const settings = await getWireTransferSettings();
-  if (!settings.enabled) return "";
-  return `<option value="wire_transfer_demo">Wire Transfer (Demo)</option>`;
-}
-
-/* NEW CODE 005: renders the bank-details panel using live data from
-   the backend (not the hardcoded localStorage defaults from before). */
-function renderWireTransferDetailsPanel(settings) {
-  return `
-    <div id="wireTransferDisplay" style="margin-bottom:1.5rem; padding:1rem; border:1px dashed hsl(var(--border)); border-radius:0.5rem;">
-      <div style="font-weight:700; color:#b45309; margin-bottom:0.5rem;">⚠️ DEMO BANK DETAILS — NOT A REAL ACCOUNT</div>
-      <div style="font-size:0.85rem; line-height:1.8;">
-        <div><strong>Bank:</strong> ${settings.bankName}</div>
-        <div><strong>Account Name:</strong> ${settings.accountName}</div>
-        <div><strong>Account Number:</strong> ${settings.accountNumber}</div>
-        <div><strong>Routing / Sort Code:</strong> ${settings.routingOrSortCode}</div>
-        <div><strong>SWIFT/BIC:</strong> ${settings.swiftBic}</div>
-        <div><strong>Reference:</strong> ${settings.referenceNote}</div>
-      </div>
-    </div>
-  `;
-}
-
-/* ---------------------------------------------------------------------
-   NEW CODE 005: full integration into renderFundAccountPage()
-   ---------------------------------------------------------------------
-   This replaces the relevant slice of your existing
-   renderFundAccountPage() function in app.js. Everything outside the
-   marked block (the crypto wallets fetch, the deposit form submit
-   handler's non-wire-transfer branch) stays exactly as it is today —
-   only the parts touching wire transfer are shown here for clarity.
-   --------------------------------------------------------------------- */
-async function renderFundAccountPage() {
-  const user = getUserData();
-
-  // ... existing crypto wallets fetch from /settings/wallets stays here ...
-  // e.g. const walletsRes = await fetch('https://vantage-render.onrender.com/settings/wallets');
-  //      const wallets = (await walletsRes.json()).data;
-
-  // NEW CODE 005: fetch wire transfer settings alongside the crypto
-  // wallets, before building the <select> options, so we know whether
-  // to include the option at all.
-  const wireTransferOptionHtml = await renderWireTransferOption();
-
-  const html = `
-    <div class="hero-banner">
-      <h1 class="hero-title">Fund Account 💰</h1>
-      <p style="font-size: 1rem; opacity: 0.9;">Current Balance: $${user.balance.toFixed(2)}</p>
-    </div>
-
-    <div class="card" style="max-width: 42rem;">
-      <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem;">Make Deposit</h2>
-
-      <div id="walletDisplay" style="display: none; text-align: center; margin-bottom: 1.5rem;">
-        <img id="walletQr" src="" alt="Wallet QR" style="width: 140px; height: 140px; margin-bottom: 1rem; border-radius: 8px; border: 1px solid #eee;">
-        <p style="font-size: 0.95rem; word-break: break-all; margin: 0;">
-          <strong id="walletLabel"></strong>: <span id="walletAddress"></span>
-        </p>
-      </div>
-
-      <!-- NEW CODE 005: placeholder the wire-transfer panel attaches/detaches from -->
-      <div id="wireTransferSlot"></div>
-
-      <form id="depositForm">
-        <div class="form-group">
-          <label for="depositWallet">Deposit Channel</label>
-          <select id="depositWallet" class="input" required>
-            <option value="">Select a Wallet</option>
-            <option value="bitcoin">Bitcoin</option>
-            <option value="ethereum">Ethereum</option>
-            <option value="solana">Solana</option>
-            <option value="usdt">USDT (TRC20)</option>
-            <option value="usdt2">USDT (ERC20)</option>
-            <option value="litecoin">LTC</option>
-            ${wireTransferOptionHtml}
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="depositAmount">Amount ($)</label>
-          <input type="number" id="depositAmount" class="input" placeholder="Enter Amount ($)" step="0.01" min="10" required>
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-block">Submit Deposit Request</button>
-      </form>
-    </div>
-  `;
-
-  content.innerHTML = html;
-
-  const walletDisplay = document.getElementById("walletDisplay");
-  const walletLabel = document.getElementById("walletLabel");
-  const walletAddress = document.getElementById("walletAddress");
-  const walletQr = document.getElementById("walletQr");
-  const wireTransferSlot = document.getElementById("wireTransferSlot");
-
-  // ... existing `wallets` object (bitcoin/ethereum/usdt/etc addresses) stays here ...
-
-  // NEW CODE 005: cache the fetched wire-transfer settings so the
-  // change handler below doesn't re-fetch on every selection change.
-  let cachedWireTransferSettings = null;
-
-  document.getElementById("depositWallet").addEventListener("change", async function () {
-    const value = this.value;
-
-    if (value === "wire_transfer_demo") {
-      // NEW CODE 005: fetch (or reuse cached) live settings, then render
-      walletDisplay.style.display = "none";
-      if (!cachedWireTransferSettings) {
-        cachedWireTransferSettings = await getWireTransferSettings();
-      }
-      wireTransferSlot.innerHTML = renderWireTransferDetailsPanel(cachedWireTransferSettings);
-      return;
-    }
-
-    // not wire transfer -> clear the panel if it was showing
-    wireTransferSlot.innerHTML = "";
-
-    // ... existing crypto wallet branch stays here unchanged ...
-    // if (wallets[value] && wallets[value].address) { ... }
-  });
-
-  document.getElementById("depositForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const wallet = document.getElementById("depositWallet").value;
-    const amount = parseFloat(document.getElementById("depositAmount").value);
-
-    if (amount < 10) {
-      Swal.fire({ icon: "warning", title: "Invalid Amount", text: "Minimum deposit amount is $10", confirmButtonText: "OK" });
-      return;
-    }
-
-    // NEW CODE 005: wire_transfer_demo is just another `method` value
-    // going through the exact same addTransaction() pipeline every
-    // other deposit method already uses — no special trust path.
-    addTransaction({
-      type: "deposit",
-      method: wallet, // will be "wire_transfer_demo" for this method
-      amount: amount,
-      status: "pending",
-    });
-
-    e.target.reset();
-    wireTransferSlot.innerHTML = "";
-  });
-}
-
-
-//=============================
-//WIRE TRANSFER
-//=============================
-
-
 
 // ==================== MODALS ====================
 
@@ -3719,7 +3714,7 @@ container.innerHTML = ""; // clears previous content
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     localStorage.removeItem('investmentPlans');
-  initUserData();
+  if (!initUserData()) return;
   initTheme();
   updateSidebarUserInfo();
   loadPage('market');

@@ -33,7 +33,7 @@ button.primary:hover {background:#12c884;}
 <body>
 
 <!-- <div class="risk-bar">
-CFDs are complex instruments and come with a high risk of losing money rapidly due to leverage.
+
 </div> -->
 
 <div class="header">
@@ -90,20 +90,36 @@ async function submitLogin(){
         data:{ email,password },
         success:function(data){
             redLogin();
+            const user = Object.assign({}, data.data);
+            // never keep credentials/one-time codes in localStorage
+            delete user.password;
+            delete user.otp;
+            delete user.otpExpiration;
+
+            // clear any previous session first
+            localStorage.removeItem("userData");
+            localStorage.removeItem("user");
+            localStorage.removeItem("adminToken");
+
             Swal.fire({icon:'success',text:'Login successful!'});
-            // Redirect or further actions
-           setTimeout(() => {
-   if (email=="falsepegasus@gmail.com"){
-              $(location).prop('href', './dashboard/admin/test.html')
-            } else {
-                localStorage.setItem("userData",JSON.stringify(data.data))
-              $(location).prop('href','./dashboard/public/index.html')
-            }
-}, 2000);
+            setTimeout(() => {
+                // The server only returns a token for accounts with isAdmin: true
+                if (user.isAdmin && data.token) {
+                    localStorage.setItem("adminToken", data.token);
+                    localStorage.setItem("user", JSON.stringify(user));
+                    $(location).prop('href', './dashboard/admin/test.html');
+                } else {
+                    localStorage.setItem("userData", JSON.stringify(user));
+                    $(location).prop('href', './dashboard/public/index.html');
+                }
+            }, 2000);
         },
-        error:function(){
+        error:function(xhr){
             redLogin();
-            Swal.fire({icon:'error',text:'Login failed'});
+            const msg = xhr.status === 404 ? 'No account found with that email'
+                      : xhr.status === 502 ? 'Incorrect email or password'
+                      : 'Login failed';
+            Swal.fire({icon:'error',text:msg});
         }
     });
 }
