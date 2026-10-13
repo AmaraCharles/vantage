@@ -2208,7 +2208,7 @@ function renderFundAccountPage() {
 </div>
 
 <div style="text-align: center; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid hsl(var(--border));">
-  <p class="text-muted small">COPYRIGHT ©2025 vantagestonks, All rights Reserved</p>
+  <p class="text-muted small">COPYRIGHT ©2026 vantagestonks, All rights Reserved</p>
 </div>
 
 
@@ -3141,7 +3141,7 @@ function renderWithdrawalPage() {
         </div>
 
         <div style="padding: 1rem; background-color: hsl(var(--muted) / 0.5); border-radius: 0.5rem; border: 1px solid hsl(var(--border)); margin-bottom: 1.5rem;">
-          <p class="text-muted small">Please note: Withdrawals may take a few minutes to process.</p>
+          <p class="text-muted small">Please note: Withdrawals may take a few minutes/hrs to process.</p>
         </div>
 
         <button type="submit" class="btn btn-primary btn-block">Withdraw</button>
