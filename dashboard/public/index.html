@@ -1846,7 +1846,7 @@ html, body {
             <nav class="sidebar-nav">
                 <div class="nav-section">
                     <div class="nav-section-label">DASHBOARDS</div>
-                    <a href="#market" class="nav-link active" data-page="market">
+                    <a href="#market" class="nav-link" data-page="market">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
                         </svg>
@@ -1879,7 +1879,7 @@ html, body {
                         <span>Place Trade</span>
                         <span class="nav-emoji"></span>
                     </a>
-                    <a href="#dashboard" class="nav-link" data-page="dashboard">
+                    <a href="#dashboard" class="nav-link active" data-page="dashboard">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="7" height="7"></rect>
                             <rect x="14" y="3" width="7" height="7"></rect>
@@ -2359,8 +2359,8 @@ html, body {
                     <div class="trade-price" id="tradeModalPrice">1.16506</div>
                 </div>
                 <div class="form-group">
-                    <label for="tradeAmount">Amount ($)</label>
-                    <input type="number" id="tradeAmount" class="input" placeholder="Enter amount" step="0.01">
+                    <label for="tradeAmount" data-currency-label="Amount">Amount ($)</label>
+                    <input type="text" inputmode="decimal" id="tradeAmount" class="input" placeholder="Enter amount">
                 </div>
                 <button class="btn btn-primary btn-block" id="placeTrade">Place Order</button>
             </div>
@@ -2381,8 +2381,8 @@ html, body {
                     <p><span class="text-primary">Add money</span> to your account in order to Mirror Trades.</p>
                 </div>
                 <div class="form-group">
-                    <label for="copyAmount">Enter Amount</label>
-                    <input type="number" id="copyAmount" class="input" placeholder="Enter amount" step="0.01">
+                    <label for="copyAmount" data-currency-label="Enter Amount">Enter Amount</label>
+                    <input type="text" inputmode="decimal" id="copyAmount" class="input" placeholder="Enter amount">
                 </div>
                 <div class="form-group">
                     <label for="copyDuration">Select Elapse Day</label>
