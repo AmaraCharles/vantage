@@ -2430,6 +2430,7 @@ function renderProfilePage() {
         <button class="btn" style="background-color: transparent; border: 1px solid hsl(var(--border)); color: hsl(var(--foreground));" onclick="handleUpdateKYC()">Update KYC</button>
       </div>
      <button class="btn" style="background-color: transparent;margin-top:10px;  border: 1px solid hsl(var(--border)); color: hsl(var(--foreground));" onclick="handleChangePassword()">Change Password</button>
+     <button class="btn" style="background-color: transparent;margin-top:10px;  border: 1px solid hsl(var(--destructive)); color: hsl(var(--destructive));" onclick="logoutUser()">Log Out</button>
 
     </div>
   `;
@@ -3750,6 +3751,23 @@ container.innerHTML = ""; // clears previous content
   tableContainer.appendChild(table);
 }
 
+
+// ==================== LOGOUT ====================
+async function logoutUser() {
+  const result = await Swal.fire({
+    icon: 'question',
+    title: 'Log out?',
+    text: 'You will need to sign in again to access your account.',
+    showCancelButton: true,
+    confirmButtonText: 'Log Out',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#dc2626'
+  });
+  if (!result.isConfirmed) return;
+
+  ['userData', 'kycStatus', 'imgUrl', 'apiLogs', 'investmentPlans'].forEach(k => localStorage.removeItem(k));
+  window.location.href = './login.html';
+}
 
 // ==================== INITIALIZATION ====================
 
