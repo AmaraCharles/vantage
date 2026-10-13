@@ -2261,7 +2261,7 @@ function renderFundAccountPage() {
 
   <!-- 👇 Wallet Display Area -->
   <div id="walletDisplay" style="display: none; text-align: center; margin-bottom: 1.5rem;">
-    <img id="walletQr" src="" alt="Wallet QR" style="width: 140px; height: 140px; margin-bottom: 1rem; border-radius: 8px; border: 1px solid #eee;">
+    <div id="walletQr" aria-label="Wallet QR" style="display: inline-block; width: 140px; height: 140px; padding: 6px; background: #fff; margin-bottom: 1rem; border-radius: 8px; border: 1px solid #eee;"></div>
     <p style="font-size: 0.95rem; word-break: break-all; margin: 0 0 0.75rem 0;">
       <strong id="walletLabel"></strong>: 
       <span id="walletAddress"></span>
@@ -2309,14 +2309,8 @@ function renderFundAccountPage() {
       <label for="depositWallet">Deposit Channel</label>
       <select id="depositWallet" class="input" required>
         <option value="">Select a Wallet</option>
-        <option value="bitcoin">Bitcoin</option>
-        <option value="ethereum">Ethereum</option>
-        <option value="solana">Solana</option>
-        <option value="usdt">USDT (TRC20)</option>
-        <option value="usdt2">USDT (ERC20)</option>
-        <option value="litecoin">LTC</option>
-       
       </select>
+      <p id="depositChannelsNote" class="text-muted small" style="margin: 0.4rem 0 0;">Loading deposit channels…</p>
     </div>
 
     <div class="form-group">
@@ -2344,16 +2338,51 @@ ${renderDepositHistory(user)}
   const walletAddress = document.getElementById("walletAddress");
   const walletQr = document.getElementById("walletQr");
 
-  // Replace with actual addresses from user object
- const wallets = {
-    bitcoin: { label: "Bitcoin", address: "bc1q70hx8f5rzlv7g9man8gat77kup5v0s8ennvqaq", qr: "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=bc1q70hx8f5rzlv7g9man8gat77kup5v0s8ennvqaq" },
-    ethereum: { label: "Ethereum", address: "0xbe085b0F1F7cd38EEC8D804f40Bfd1703F380C51", qr: "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=0xbe085b0F1F7cd38EEC8D804f40Bfd1703F380C51" },
-    usdt: { label: "USDT (TRC20)", address: "TYcK8LbaAZYbn2n3o7MfJjkxFgEAZfGXPC", qr: "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TYcK8LbaAZYbn2n3o7MfJjkxFgEAZfGXPC" },
-     usdt2: { label: "USDT (ERC20)", address: "0xbe085b0F1F7cd38EEC8D804f40Bfd1703F380C51", qr: "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=0xbe085b0F1F7cd38EEC8D804f40Bfd1703F380C51" },
-  
+  // Crypto deposit channels come only from the admin-managed list on the
+  // server (GET /settings/wallets) — nothing is hardcoded here.
+  const wallets = new Map();
+  const depositChannelsNote = document.getElementById("depositChannelsNote");
 
-    solana: { label: "SOL", address: "CYAn5Le2dRBvSFVVxuPr527jbKLZb96k82kUWh9ZQ77d", qr: "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=CYAn5Le2dRBvSFVVxuPr527jbKLZb96k82kUWh9ZQ77d" },
-  };
+  // Insert before Wire/Demo so crypto channels stay first whichever loads first.
+  function insertDepositOption(select, opt) {
+    const anchor = select.querySelector('option[value="wire"], option[value="demo"]');
+    select.insertBefore(opt, anchor);
+  }
+
+  $.ajax({
+    type: "GET",
+    url: "https://vantage-render.onrender.com/settings/wallets",
+    dataType: "json",
+    cache: false,
+    timeout: 30000
+  }).then(res => {
+    const select = document.getElementById("depositWallet");
+    const list = res && Array.isArray(res.data) ? res.data : [];
+    list.forEach(w => {
+      if (!w || typeof w.key !== "string" || typeof w.address !== "string" || wallets.has(w.key)) return;
+      wallets.set(w.key, Object.freeze({ label: String(w.label || w.key), address: w.address }));
+      const opt = document.createElement("option");
+      opt.value = w.key;
+      opt.textContent = String(w.label || w.key);
+      insertDepositOption(select, opt);
+    });
+    if (depositChannelsNote) {
+      depositChannelsNote.textContent = wallets.size ? "" : "No crypto deposit channels are available right now. Please contact support.";
+      depositChannelsNote.style.display = wallets.size ? "none" : "block";
+    }
+  }).catch(err => {
+    console.error("Error loading deposit wallets:", err);
+    if (depositChannelsNote) depositChannelsNote.textContent = "Crypto deposit channels are temporarily unavailable. Please try again later or contact support.";
+  });
+
+  function renderWalletQr(address) {
+    walletQr.innerHTML = "";
+    if (typeof QRCode === "function") {
+      new QRCode(walletQr, { text: address, width: 128, height: 128, correctLevel: QRCode.CorrectLevel.M });
+    } else {
+      walletQr.style.display = "none"; // library failed to load — address + copy button still work
+    }
+  }
 
 
   // Demo deposit method — only offered when an admin has switched it on.
@@ -2432,11 +2461,12 @@ ${renderDepositHistory(user)}
       showDemoMessage();
       return;
     }
-    if (wallets[value] && wallets[value].address) {
+    const w = wallets.get(value);
+    if (w) {
       walletDisplay.style.display = "block";
-      walletLabel.textContent = wallets[value].label;
-      walletAddress.textContent = wallets[value].address;
-      walletQr.src = wallets[value].qr;
+      walletLabel.textContent = w.label;
+      walletAddress.textContent = w.address;
+      renderWalletQr(w.address);
     } else {
       walletDisplay.style.display = "none";
     }
@@ -2452,11 +2482,16 @@ ${renderDepositHistory(user)}
       return;
     }
 
+    if (wallet !== 'wire' && !wallets.has(wallet)) {
+      Swal.fire({ icon: 'warning', title: 'Select a Deposit Channel', text: 'Please choose one of the available deposit channels.', confirmButtonText: 'OK' });
+      return;
+    }
+
     if (amount < 10) {
       Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: `Minimum deposit amount is ${money(10)}`, confirmButtonText: 'OK' });
       return;
     }
-    
+
     addTransaction({
       type: 'deposit',
       method: wallet,
@@ -2472,6 +2507,7 @@ ${renderDepositHistory(user)}
     // });
     e.target.reset();
     wireDisplay.style.display = "none";
+    walletDisplay.style.display = "none";
   });
 }
 
